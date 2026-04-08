@@ -1,13 +1,116 @@
-﻿import clickupData from "../data/clickup-space.json";
+﻿import clickupData from "./empty-dashboard-data.js";
+import { useEffect, useState } from "react";
 import igpeLogo from "./assets/igpe-logo.png";
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
-const TODAY = new Date();
-
-const trackedProjects = getTrackedProjects(clickupData);
-const summary = buildSummary(trackedProjects);
 
 export default function App() {
+  const [dashboardData, setDashboardData] = useState(clickupData);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [statusMessage, setStatusMessage] = useState("");
+
+  useEffect(() => {
+    void initializeDashboard();
+  }, []);
+
+  async function initializeDashboard() {
+    setIsLoading(true);
+    setStatusMessage("Sincronizando o painel com o ClickUp...");
+    setErrorMessage("");
+
+    try {
+      const payload = await refreshClickupData();
+
+      if (payload.data) {
+        setDashboardData(payload.data);
+      } else {
+        await loadData();
+      }
+
+      setStatusMessage("Painel sincronizado com os dados mais recentes do ClickUp.");
+    } catch (error) {
+      const fallbackLoaded = await loadData({ silentError: true });
+      const baseMessage =
+        error instanceof Error ? error.message : "Falha ao atualizar o ClickUp na abertura.";
+
+      setErrorMessage(
+        fallbackLoaded
+          ? `${baseMessage} Exibindo a ultima exportacao disponivel no painel.`
+          : baseMessage
+      );
+
+      if (fallbackLoaded) {
+        setStatusMessage("Exibindo a ultima exportacao disponivel.");
+      } else {
+        setStatusMessage("");
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function loadData({ silentError = false } = {}) {
+    try {
+      const response = await fetch(`/api/clickup-data?ts=${Date.now()}`, {
+        cache: "no-store"
+      });
+      const payload = await response.json();
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Nao foi possivel carregar os dados do ClickUp.");
+      }
+
+      setDashboardData(payload);
+      return true;
+    } catch (error) {
+      if (!silentError) {
+        throw error;
+      }
+
+      return false;
+    }
+  }
+
+  async function refreshClickupData() {
+    const response = await fetch("/api/clickup-refresh", {
+      method: "POST"
+    });
+    const payload = await response.json();
+
+    if (!response.ok) {
+      throw new Error(payload.error || "Nao foi possivel atualizar os dados do ClickUp.");
+    }
+
+    return payload;
+  }
+
+  async function handleRefresh() {
+    setIsRefreshing(true);
+    setStatusMessage("");
+    setErrorMessage("");
+
+    try {
+      const payload = await refreshClickupData();
+
+      if (payload.data) {
+        setDashboardData(payload.data);
+      } else {
+        await loadData();
+      }
+
+      setStatusMessage(payload.message || "Dados atualizados com sucesso.");
+    } catch (error) {
+      setErrorMessage(error instanceof Error ? error.message : "Falha ao atualizar o ClickUp.");
+    } finally {
+      setIsRefreshing(false);
+    }
+  }
+
+  const trackedProjects = dashboardData ? getTrackedProjects(dashboardData) : [];
+  const summary = buildSummary(trackedProjects);
+
   return (
     <main className="app-shell">
       <section className="hero">
@@ -25,15 +128,34 @@ export default function App() {
             Uma leitura rápida do que está em acompanhamento no ClickUp, com foco
             em volume, prazos e responsáveis.
           </p>
+
+          <div className="hero-actions">
+            <button
+              className="refresh-button"
+              type="button"
+              onClick={handleRefresh}
+              disabled={isLoading || isRefreshing}
+            >
+              {isRefreshing ? "Atualizando..." : "Atualizar agora"}
+            </button>
+            <span className="hero-status">
+              {statusMessage ||
+                (isLoading
+                  ? "Carregando dados do ClickUp..."
+                  : "Clique para buscar os dados mais recentes do ClickUp.")}
+            </span>
+          </div>
+
+          {errorMessage ? <p className="feedback feedback-error">{errorMessage}</p> : null}
         </div>
 
         <div className="hero-meta">
           <MetaCard label="Projetos acompanhados" value={summary.total} />
           <MetaCard
             label="Última atualização"
-            value={formatDateTime(clickupData.exportedAt)}
+            value={dashboardData?.exportedAt ? formatDateTime(dashboardData.exportedAt) : "Pendente"}
           />
-          <MetaCard label="Escopo monitorado" value={getSourceLabel(clickupData)} />
+          <MetaCard label="Escopo monitorado" value={getSourceLabel(dashboardData)} />
         </div>
       </section>
 
@@ -74,15 +196,19 @@ export default function App() {
           </div>
 
           <div className="distribution-list">
-            {summary.statusDistribution.map((item) => (
-              <div className="distribution-row" key={item.label}>
-                <div>
-                  <strong>{item.label}</strong>
-                  <span>{item.description}</span>
+            {summary.statusDistribution.length > 0 ? (
+              summary.statusDistribution.map((item) => (
+                <div className="distribution-row" key={item.label}>
+                  <div>
+                    <strong>{item.label}</strong>
+                    <span>{item.description}</span>
+                  </div>
+                  <div className="distribution-value">{item.value}</div>
                 </div>
-                <div className="distribution-value">{item.value}</div>
-              </div>
-            ))}
+              ))
+            ) : (
+              <EmptyState message="Nenhuma distribuicao disponivel ainda." />
+            )}
           </div>
         </div>
 
@@ -94,23 +220,27 @@ export default function App() {
             </div>
           </div>
 
-          <ul className="insight-list">
-            <li>
-              {summary.openCount} projetos acompanhados estão em andamento neste
-              momento.
-            </li>
-            <li>
-              {summary.dueSoonCount === 0
-                ? "Nenhum projeto acompanhado vence nos próximos 30 dias."
-                : `${summary.dueSoonCount} projeto${summary.dueSoonCount > 1 ? "s" : ""} pedem atenção por prazo mais próximo.`}
-            </li>
-            <li>
-              {summary.uniqueOwnersCount} pessoa
-              {summary.uniqueOwnersCount > 1 ? "s aparecem" : " aparece"} como
-              responsável nas frentes acompanhadas.
-            </li>
-            <li>{summary.statusHeadline}</li>
-          </ul>
+          {trackedProjects.length > 0 ? (
+            <ul className="insight-list">
+              <li>
+                {summary.openCount} projetos acompanhados estão em andamento neste
+                momento.
+              </li>
+              <li>
+                {summary.dueSoonCount === 0
+                  ? "Nenhum projeto acompanhado vence nos próximos 30 dias."
+                  : `${summary.dueSoonCount} projeto${summary.dueSoonCount > 1 ? "s" : ""} pedem atenção por prazo mais próximo.`}
+              </li>
+              <li>
+                {summary.uniqueOwnersCount} pessoa
+                {summary.uniqueOwnersCount > 1 ? "s aparecem" : " aparece"} como
+                responsável nas frentes acompanhadas.
+              </li>
+              <li>{summary.statusHeadline}</li>
+            </ul>
+          ) : (
+            <EmptyState message="Assim que os dados forem carregados, o resumo aparece aqui." />
+          )}
         </div>
       </section>
 
@@ -122,63 +252,71 @@ export default function App() {
           </div>
         </div>
 
-        <div className="project-grid">
-          {trackedProjects.map((project) => (
-            <article className="project-card" key={project.id}>
-              <div className="project-topline">
-                <span
-                  className="status-pill"
-                  style={{ "--pill-color": project.status.color || "#2563eb" }}
+        {trackedProjects.length > 0 ? (
+          <div className="project-grid">
+            {trackedProjects.map((project) => (
+              <article className="project-card" key={project.id}>
+                <div className="project-topline">
+                  <span
+                    className="status-pill"
+                    style={{ "--pill-color": project.status.color || "#2563eb" }}
+                  >
+                    {project.status.label}
+                  </span>
+                  <span className={`health-pill health-${project.health.tone}`}>
+                    {project.health.label}
+                  </span>
+                </div>
+
+                <h3>{project.name}</h3>
+                <p className="project-list-name">{project.listName}</p>
+
+                <dl className="project-meta">
+                  <div>
+                    <dt>Responsável</dt>
+                    <dd>{project.ownerLabel}</dd>
+                  </div>
+                  <div>
+                    <dt>Prazo</dt>
+                    <dd>{project.dueLabel}</dd>
+                  </div>
+                  <div>
+                    <dt>Janela</dt>
+                    <dd>{project.timelineLabel}</dd>
+                  </div>
+                  <div>
+                    <dt>Tags</dt>
+                    <dd>{project.tagsLabel}</dd>
+                  </div>
+                </dl>
+
+                <a
+                  className="project-link"
+                  href={project.url}
+                  target="_blank"
+                  rel="noreferrer"
                 >
-                  {project.status.label}
-                </span>
-                <span className={`health-pill health-${project.health.tone}`}>
-                  {project.health.label}
-                </span>
-              </div>
-
-              <h3>{project.name}</h3>
-              <p className="project-list-name">{project.listName}</p>
-
-              <dl className="project-meta">
-                <div>
-                  <dt>Responsável</dt>
-                  <dd>{project.ownerLabel}</dd>
-                </div>
-                <div>
-                  <dt>Prazo</dt>
-                  <dd>{project.dueLabel}</dd>
-                </div>
-                <div>
-                  <dt>Janela</dt>
-                  <dd>{project.timelineLabel}</dd>
-                </div>
-                <div>
-                  <dt>Tags</dt>
-                  <dd>{project.tagsLabel}</dd>
-                </div>
-              </dl>
-
-              <a
-                className="project-link"
-                href={project.url}
-                target="_blank"
-                rel="noreferrer"
-              >
-                Abrir no ClickUp
-              </a>
-            </article>
-          ))}
-        </div>
+                  Abrir no ClickUp
+                </a>
+              </article>
+            ))}
+          </div>
+        ) : (
+          <EmptyState message="Nenhum projeto acompanhado encontrado no momento." />
+        )}
       </section>
     </main>
   );
 }
 
+function EmptyState({ message }) {
+  return <div className="empty-state">{message}</div>;
+}
+
 function getTrackedProjects(data) {
   const lists = [
-    ...(data.folderlessLists || []),
-    ...(data.folders || []).flatMap((folder) => folder.lists || [])
+    ...(data?.folderlessLists || []),
+    ...(data?.folders || []).flatMap((folder) => folder.lists || [])
   ];
 
   return lists
@@ -206,7 +344,7 @@ function normalizeProject(task, list) {
   const dueTimestamp = task.dueDate ? Number(task.dueDate) : null;
   const ownerNames = (task.assignees || []).map((assignee) => assignee.username);
   const daysToDue =
-    dueTimestamp === null ? null : Math.ceil((dueTimestamp - TODAY.getTime()) / DAY_IN_MS);
+    dueTimestamp === null ? null : Math.ceil((dueTimestamp - Date.now()) / DAY_IN_MS);
   const isClosed = Boolean(task.dateClosed) || isClosedStatus(task.status?.type);
 
   return {
@@ -218,7 +356,8 @@ function normalizeProject(task, list) {
     dueLabel: dueTimestamp ? formatDate(dueTimestamp) : "Sem prazo definido",
     timelineLabel: getTimelineLabel(daysToDue),
     ownerLabel: ownerNames.length > 0 ? ownerNames.join(", ") : "Sem responsável",
-    tagsLabel: (task.tags || []).map((tag) => tag.name).join(", "),
+    tagsLabel:
+      (task.tags || []).map((tag) => tag.name).join(", ") || "Sem tags informadas",
     status: {
       label: task.status?.status || "Sem status",
       color: task.status?.color || "#64748b",
@@ -363,11 +502,11 @@ function formatDateTime(value) {
 }
 
 function getSourceLabel(data) {
-  if (Array.isArray(data.workspaces) && data.workspaces.length > 0) {
+  if (Array.isArray(data?.workspaces) && data.workspaces.length > 0) {
     return `${data.workspaces.length} workspace(s)`;
   }
 
-  return data.space?.name || "ClickUp";
+  return data?.space?.name || "ClickUp";
 }
 
 function MetaCard({ label, value }) {
@@ -388,3 +527,5 @@ function StatCard({ label, value, hint, tone }) {
     </article>
   );
 }
+
+

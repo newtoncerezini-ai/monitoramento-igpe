@@ -6,9 +6,12 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "start": "npm run build && npm run serve",
     "preview": "vite preview",
+    "serve": "node server.mjs",
     "clickup:test": "node scripts/clickup-test.mjs",
-    "clickup:export": "node scripts/export-clickup-space.mjs"
+    "clickup:export": "node scripts/export-clickup-space.mjs",
+    "clickup:sync": "node scripts/clickup-sync.mjs"
   },
   "dependencies": {
     "react": "^19.2.4",

@@ -164,6 +164,55 @@ a {
   color: #35548f;
 }
 
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 22px;
+}
+
+.refresh-button {
+  border: 0;
+  border-radius: 16px;
+  padding: 14px 18px;
+  font: inherit;
+  font-weight: 800;
+  color: white;
+  background: linear-gradient(135deg, var(--blue), var(--violet) 55%, var(--cyan));
+  box-shadow: 0 14px 28px rgba(66, 84, 196, 0.24);
+  cursor: pointer;
+  transition: transform 160ms ease, box-shadow 160ms ease, opacity 160ms ease;
+}
+
+.refresh-button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  box-shadow: 0 16px 30px rgba(66, 84, 196, 0.28);
+}
+
+.refresh-button:disabled {
+  opacity: 0.72;
+  cursor: wait;
+}
+
+.hero-status {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.feedback {
+  margin: 16px 0 0;
+  padding: 14px 16px;
+  border-radius: 18px;
+  line-height: 1.5;
+}
+
+.feedback-error {
+  color: #8f2330;
+  background: rgba(204, 77, 95, 0.12);
+  border: 1px solid rgba(204, 77, 95, 0.2);
+}
+
 .hero-meta {
   display: grid;
   gap: 12px;
@@ -304,6 +353,14 @@ a {
 
 .projects-panel {
   overflow: hidden;
+}
+
+.empty-state {
+  padding: 18px 20px;
+  border-radius: 20px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px dashed rgba(42, 83, 186, 0.18);
 }
 
 .project-grid {

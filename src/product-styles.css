@@ -314,6 +314,7 @@
 
 .dashboard-shell .mini-stats div,
 .dashboard-shell .detail-meta div {
+  min-width: 0;
   padding-top: 10px;
   border-top: 1px solid rgba(42, 83, 186, 0.12);
 }
@@ -322,6 +323,8 @@
 .dashboard-shell .detail-meta dd {
   margin: 6px 0 0;
   color: #284a83;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .dashboard-shell .bar-row,

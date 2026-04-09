@@ -466,8 +466,15 @@ function UpdatesView({ model, onOpenProject }) {
 }
 
 function DetailView({ project, model, onBack }) {
-  const qualityItem = model.quality.items.find((item) => item.project.id === project.id);
-  const relatedUpdates = model.updates.items.filter((item) => item.projectId === project.id);
+  const qualityItems = Array.isArray(model?.quality?.items) ? model.quality.items : [];
+  const updateItems = Array.isArray(model?.updates?.items) ? model.updates.items : [];
+  const qualityItem = qualityItems.find((item) => item.project.id === project.id);
+  const relatedUpdates = updateItems.filter((item) => item.projectId === project.id);
+  const comments = Array.isArray(project?.comments) ? project.comments : [];
+  const dependencies = Array.isArray(project?.dependencies) ? project.dependencies : [];
+  const subtasks = Array.isArray(project?.subtasks) ? project.subtasks : [];
+  const attachments = Array.isArray(project?.attachments) ? project.attachments : [];
+  const issueLabels = Array.isArray(qualityItem?.issueLabels) ? qualityItem.issueLabels : [];
 
   return (
     <div className="view-stack">
@@ -515,20 +522,20 @@ function DetailView({ project, model, onBack }) {
             <div className="list-row"><div><strong>Comentarios</strong><span>{project.commentCount}</span></div></div>
             <div className="list-row"><div><strong>Anexos</strong><span>{project.attachmentCount}</span></div></div>
             <div className="list-row"><div><strong>Custom fields preenchidos</strong><span>{project.customFieldCount}</span></div></div>
-            <div className="list-row"><div><strong>Pendencias</strong><span>{qualityItem?.issueLabels.join(" | ") || "Nenhuma pendencia de cadastro."}</span></div></div>
+            <div className="list-row"><div><strong>Pendencias</strong><span>{issueLabels.join(" | ") || "Nenhuma pendencia de cadastro."}</span></div></div>
           </div>
         </Panel>
       </div>
 
       <div className="grid-two">
         <Panel kicker="Comentarios" title="Comentarios recentes">
-          {project.comments.length > 0 ? (
+          {comments.length > 0 ? (
             <div className="feed-list">
-              {project.comments.slice(0, 6).map((comment) => (
+              {comments.slice(0, 6).map((comment) => (
                 <div className="feed-item static" key={comment.id || comment.date}>
                   <strong>{comment.user?.username || "Pessoa nao identificada"}</strong>
                   <span>{comment.textPreview || "Comentario sem texto."}</span>
-                  <small>{comment.date ? formatDateTime(comment.date) : "Sem data"}</small>
+                  <small>{safeFormatDateTime(comment.date)}</small>
                 </div>
               ))}
             </div>
@@ -539,22 +546,22 @@ function DetailView({ project, model, onBack }) {
 
         <Panel kicker="Estrutura" title="Dependencias, subtarefas e anexos">
           <div className="list-stack">
-            {project.dependencies.map((dependency, index) => (
+            {dependencies.map((dependency, index) => (
               <div className="list-row" key={`${dependency.taskId}-${index}`}>
                 <div><strong>Dependencia</strong><span>{dependency.dependsOn || dependency.taskId || "Vinculo sem detalhe"}</span></div>
               </div>
             ))}
-            {project.subtasks.map((task) => (
+            {subtasks.map((task) => (
               <div className="list-row" key={task.id}>
                 <div><strong>Subtarefa</strong><span>{task.name} · {task.status}</span></div>
               </div>
             ))}
-            {project.attachments.map((attachment) => (
+            {attachments.map((attachment) => (
               <a className="list-row link-row" key={attachment.id || attachment.url} href={attachment.url} target="_blank" rel="noreferrer">
                 <div><strong>Anexo</strong><span>{attachment.title}</span></div>
               </a>
             ))}
-            {project.dependencies.length === 0 && project.subtasks.length === 0 && project.attachments.length === 0 ? (
+            {dependencies.length === 0 && subtasks.length === 0 && attachments.length === 0 ? (
               <EmptyState message="Nao ha dependencias, subtarefas ou anexos sincronizados." />
             ) : null}
           </div>
@@ -671,4 +678,16 @@ function SummaryCard({ label, value, hint }) {
 
 function EmptyState({ message }) {
   return <div className="empty-state">{message}</div>;
+}
+
+function safeFormatDateTime(value) {
+  if (!value) {
+    return "Sem data";
+  }
+
+  try {
+    return formatDateTime(value);
+  } catch {
+    return "Sem data";
+  }
 }

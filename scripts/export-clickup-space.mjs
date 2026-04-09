@@ -1,8 +1,6 @@
-import { exportClickupSpace } from "../lib/clickup-export.mjs";
+import { exportClickupSpace } from "../lib/clickup-export-next.mjs";
 
-if (import.meta.url === new URL(process.argv[1], "file:").href) {
-  exportClickupSpace().catch((error) => {
-    console.error(error instanceof Error ? error.message : error);
-    process.exit(1);
-  });
-}
+exportClickupSpace().catch((error) => {
+  console.error(error instanceof Error ? error.message : error);
+  process.exit(1);
+});

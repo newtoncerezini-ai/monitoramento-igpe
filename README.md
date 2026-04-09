@@ -4,8 +4,9 @@
 
 1. Copie `.env.example` para `.env`.
 2. Preencha `CLICKUP_TOKEN` com seu token pessoal do ClickUp.
-3. Opcionalmente, ajuste `CLICKUP_REFRESH_INTERVAL_MINUTES` para definir o intervalo de atualizacao automatica. O padrao e `10`.
-4. Opcionalmente, ajuste `CLICKUP_AUTO_REFRESH_ON_SERVER` para `false` se nao quiser que o servidor local fique sincronizando em segundo plano.
+3. Opcionalmente, ajuste `PORT` para mudar a porta local. O padrao recomendado e `4173`.
+4. Opcionalmente, ajuste `CLICKUP_REFRESH_INTERVAL_MINUTES` para definir o intervalo de atualizacao automatica. O padrao e `10`.
+5. Opcionalmente, ajuste `CLICKUP_AUTO_REFRESH_ON_SERVER`. O recomendado para ambiente local e `false`.
 
 ## Teste da conexao
 
@@ -41,7 +42,7 @@ Ao abrir a pagina, o painel tenta primeiro sincronizar com o ClickUp e depois ca
 
 Se voce quiser atualizar novamente sem recarregar a pagina, use o botao "Atualizar agora".
 
-Enquanto `npm run serve` estiver rodando, o servidor tambem pode continuar sincronizando em segundo plano usando `CLICKUP_REFRESH_INTERVAL_MINUTES`.
+Enquanto `npm run serve` estiver rodando, o servidor pode continuar sincronizando em segundo plano usando `CLICKUP_REFRESH_INTERVAL_MINUTES`, desde que `CLICKUP_AUTO_REFRESH_ON_SERVER=true`.
 
 Importante: esse fluxo usa os endpoints `/api/clickup-data` e `/api/clickup-refresh`, entao ele funciona com `npm run serve` ou `npm run start`. No `vite preview` a interface abre, mas a API local nao e atendida por esse servidor.
 
@@ -74,6 +75,6 @@ No Vercel, o painel continua chamando `/api/clickup-data` e `/api/clickup-refres
 
 ## Observacao importante
 
-No ambiente local, existe sincronizacao em segundo plano enquanto `server.mjs` estiver rodando.
+No ambiente local, a sincronizacao em segundo plano depende de `CLICKUP_AUTO_REFRESH_ON_SERVER=true`.
 
 No Vercel, por ser serverless, nao existe processo em execucao continua. Entao a atualizacao acontece quando a pagina abre ou quando o usuario clica no botao de atualizar.

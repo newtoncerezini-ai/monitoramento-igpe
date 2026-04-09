@@ -5,9 +5,18 @@ const emptyDashboardData = {
     name: "ClickUp",
     private: false
   },
+  trackingConfig: {
+    tag: "acompanhada",
+    requiredCustomFields: [],
+    staleAfterDays: 7
+  },
   workspaces: [],
   folders: [],
-  folderlessLists: []
+  folderlessLists: [],
+  trackedTasks: [],
+  goals: [],
+  history: [],
+  syncIssues: []
 };
 
 export default emptyDashboardData;

@@ -1,4 +1,4 @@
-import { exportClickupSpace, readSavedClickupData } from "../lib/clickup-export.mjs";
+import { exportClickupSpace, readSavedClickupData } from "../lib/clickup-export-next.mjs";
 
 export default async function handler(_request, response) {
   try {
